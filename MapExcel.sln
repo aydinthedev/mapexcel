@@ -1,0 +1,23 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{FBFD5445-3FB1-4BBA-9DC5-53B1D98C0324}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0C658ECF-B5DB-4D72-AFEB-A188632838E6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapExcel", "src\MapExcel.csproj", "{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D3B7BD83-04EC-4BE9-9B76-DB085C714DF6} = {FBFD5445-3FB1-4BBA-9DC5-53B1D98C0324}
+	EndGlobalSection
+EndGlobal
