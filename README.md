@@ -1,6 +1,6 @@
-# ExcelMap
+# MapExcel
 
-ExcelMap is a lightweight and easy-to-use library for mapping Excel files to C# objects. This library simplifies the process of reading from and writing to Excel files in your C# applications.
+MapExcel is a lightweight and easy-to-use library for mapping Excel files to C# objects. This library simplifies the process of reading from and writing to Excel files in your C# applications.
 
 ## Quick Start
 
