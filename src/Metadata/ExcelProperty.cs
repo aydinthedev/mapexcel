@@ -13,7 +13,7 @@ internal sealed class ExcelProperty
 
         PropertyInfo = propertyInfo;
         ColumnNumber = WorksheetConstants.MinColumnNumber;
-        ColumnMatch = ColumnMatch.Default;
+        HeaderMatch = HeaderMatch.Default;
         HeaderName = propertyInfo.Name;
         Type = propertyInfo.PropertyType;
 
@@ -52,7 +52,7 @@ internal sealed class ExcelProperty
 
     internal int ColumnNumber { get; set; }
 
-    internal ColumnMatch ColumnMatch { get; set; }
+    internal HeaderMatch HeaderMatch { get; set; }
 
     internal string HeaderName { get; set; }
 

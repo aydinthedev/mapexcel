@@ -3,7 +3,7 @@ using MapExcel.Constants;
 
 namespace MapExcel;
 
-public readonly struct CellAddress : IEquatable<CellAddress>
+public readonly struct CellAddress : IEquatable<CellAddress>, IComparable<CellAddress>
 {
     public CellAddress()
     {
@@ -104,6 +104,15 @@ public readonly struct CellAddress : IEquatable<CellAddress>
     public static bool operator ==(CellAddress left, CellAddress right) => left.Equals(right);
 
     public static bool operator !=(CellAddress left, CellAddress right) => !left.Equals(right);
+
+    public int CompareTo(CellAddress other)
+    {
+        var rowComparison = RowNumber.CompareTo(other.RowNumber);
+
+        return rowComparison == 0
+            ? ColumnNumber.CompareTo(other.ColumnNumber)
+            : rowComparison;
+    }
 
     public override string ToString() => Address;
 }

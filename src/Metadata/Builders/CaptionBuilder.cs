@@ -2,17 +2,17 @@ using ClosedXML.Excel;
 
 namespace MapExcel.Metadata.Builders;
 
-public sealed class WorksheetCaptionBuilder
+public sealed class CaptionBuilder
 {
-    private readonly WorksheetCaption _caption;
+    private readonly Caption _caption;
 
-    internal WorksheetCaptionBuilder(WorksheetCaption caption)
+    internal CaptionBuilder(Caption caption)
     {
         ArgumentNullException.ThrowIfNull(caption);
         _caption = caption;
     }
 
-    public WorksheetCaptionBuilder Range(
+    public CaptionBuilder Range(
         int firstRowNumber, int firstColumnNumber, int lastRowNumber, int lastColumnNumber)
     {
         _caption.AddressRange =
@@ -20,25 +20,25 @@ public sealed class WorksheetCaptionBuilder
         return this;
     }
 
-    public WorksheetCaptionBuilder Range(string firstCellAddress, string lastCellAddress)
+    public CaptionBuilder Range(string firstCellAddress, string lastCellAddress)
     {
         _caption.AddressRange = new CellAddressRange(firstCellAddress, lastCellAddress);
         return this;
     }
 
-    public WorksheetCaptionBuilder Range(string rangeAddress)
+    public CaptionBuilder Range(string rangeAddress)
     {
         _caption.AddressRange = new CellAddressRange(rangeAddress);
         return this;
     }
 
-    public WorksheetCaptionBuilder Range(CellAddressRange addressRange)
+    public CaptionBuilder Range(CellAddressRange addressRange)
     {
         _caption.AddressRange = addressRange;
         return this;
     }
 
-    public WorksheetCaptionBuilder Name(string name)
+    public CaptionBuilder Name(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty or null.", nameof(name));
@@ -47,7 +47,7 @@ public sealed class WorksheetCaptionBuilder
         return this;
     }
 
-    public WorksheetCaptionBuilder Style(Action<IXLStyle> configure)
+    public CaptionBuilder Style(Action<IXLStyle> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
         _caption.Style = configure;

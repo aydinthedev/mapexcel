@@ -1,6 +1,6 @@
 namespace MapExcel;
 
-public readonly struct CellAddressRange
+public readonly struct CellAddressRange : IEquatable<CellAddressRange>
 {
     public CellAddressRange(int firstRowNumber, int firstColumnNumber, int lastRowNumber, int lastColumnNumber)
     {
@@ -32,6 +32,17 @@ public readonly struct CellAddressRange
     public CellAddress LastCellAddress { get; }
 
     public string Address => string.Concat(FirstCellAddress.Address, ":", LastCellAddress);
+
+    public bool Equals(CellAddressRange other) =>
+        FirstCellAddress == other.FirstCellAddress && LastCellAddress == other.LastCellAddress;
+
+    public override bool Equals(object? obj) => obj is CellAddressRange other && Equals(other);
+
+    public override int GetHashCode() => HashCode.Combine(FirstCellAddress, LastCellAddress);
+
+    public static bool operator ==(CellAddressRange left, CellAddressRange right) => left.Equals(right);
+
+    public static bool operator !=(CellAddressRange left, CellAddressRange right) => !left.Equals(right);
 
     public override string ToString() => Address;
 }

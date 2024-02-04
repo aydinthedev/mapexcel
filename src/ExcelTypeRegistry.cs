@@ -27,6 +27,14 @@ public static class ExcelTypeRegistry
         return ExcelTypes.ContainsKey(type);
     }
 
+    public static void Remove<T>() => Remove(typeof(T));
+
+    public static void Remove(Type type)
+    {
+        if (!Contains(type)) return;
+        ExcelTypes.Remove(type);
+    }
+
     internal static ExcelType Get<T>() => Get(typeof(T));
 
     internal static ExcelType Get(Type type)

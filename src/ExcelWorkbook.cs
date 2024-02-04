@@ -1,5 +1,4 @@
 using ClosedXML.Excel;
-using MapExcel.Exceptions;
 using MapExcel.Extensions;
 using MapExcel.Metadata;
 
@@ -7,22 +6,25 @@ namespace MapExcel;
 
 public sealed class ExcelWorkbook : IDisposable
 {
-    private readonly Dictionary<ExcelType, (IXLWorksheet Worksheet, WorksheetMetadata Metadata)> _metadataMap = new();
     private readonly IXLWorkbook _workbook;
+    private readonly WorksheetMetadataMap _worksheetMetadataMap;
 
     public ExcelWorkbook()
     {
         _workbook = new XLWorkbook();
+        _worksheetMetadataMap = new WorksheetMetadataMap(_workbook);
     }
 
     public ExcelWorkbook(string filePath)
     {
         _workbook = new XLWorkbook(filePath);
+        _worksheetMetadataMap = new WorksheetMetadataMap(_workbook);
     }
 
     public ExcelWorkbook(Stream fileStream)
     {
         _workbook = new XLWorkbook(fileStream);
+        _worksheetMetadataMap = new WorksheetMetadataMap(_workbook);
     }
 
     public void Dispose()
@@ -31,30 +33,32 @@ public sealed class ExcelWorkbook : IDisposable
     }
 
     public WorksheetMetadata? GetMetadata<T>() where T : class =>
-        GetMetadataMap(ExcelTypeRegistry.Get(typeof(T)))?.Metadata;
+        _worksheetMetadataMap.TryGet(ExcelTypeRegistry.Get(typeof(T)));
 
     public IEnumerable<RowData<T>> Read<T>(WorksheetOptions? options = null) where T : class
     {
         var typeMap = ExcelTypeRegistry.Get(typeof(T));
 
-        var (worksheet, metadata) =
-            GetMetadataMap(typeMap)
+        var metadata =
+            _worksheetMetadataMap.TryGet(typeMap)
             ?? throw new InvalidOperationException("Associated worksheet is not found");
 
-        if (metadata.IsEmpty)
+        if (!metadata.Validate())
+            throw new Exception("Worksheet is not valid");
+
+        var firstDataRowFound = metadata.Worksheet.FirstDataRowFound(metadata);
+        if (firstDataRowFound == null)
             yield break;
 
         var useOptions = options ?? WorksheetOptions.Default;
-        foreach (var row in worksheet.RowsUsed(x => x.RowNumber() >= metadata.FoundFirstDataRowNumber))
+        foreach (var row in metadata.Worksheet.RowsUsed(x => x.RowNumber() >= firstDataRowFound.RowNumber()))
         {
             var entity = Activator.CreateInstance<T>();
             var rowData = new RowData<T>(entity, row.RowNumber());
 
             foreach (var property in typeMap.Properties)
             {
-                var cell = row.Cell(metadata, property)
-                           ?? throw new CellMismatchException(
-                               new CellAddress(row.RowNumber(), property.ColumnNumber), property.HeaderName);
+                var cell = row.Cell(metadata, property);
 
                 // Use custom deserializer if exists
                 object? value;
@@ -63,8 +67,8 @@ public sealed class ExcelWorkbook : IDisposable
                     var context = new DeserializationContext(useOptions, property.PropertyInfo, cell.Style);
                     value = property.Deserializer.Invoke(cell.Value, context);
 
-                    // User can set error message to context.Error
-                    // If its set then conversion is failed so we must add error to row data
+                    // User can set context.IsValid
+                    // If its set to true then conversion is failed so we must add error to row data
                     // and continue to next property
                     if (!context.IsValid)
                     {
@@ -99,25 +103,14 @@ public sealed class ExcelWorkbook : IDisposable
 
     public void Write<T>(T entity, WorksheetOptions? options = null) where T : class
     {
-        ArgumentNullException.ThrowIfNull(entity);
-
         var excelType = ExcelTypeRegistry.Get<T>();
-
-        var metadataMap = GetOrAddMetadataMap(excelType);
-
-        WriteRow(excelType, metadataMap, entity, options);
+        Write(excelType, options, entity);
     }
 
-    public void Write<T>(IEnumerable<T> entities, WorksheetOptions? options = null) where T : class
+    public void WriteBulk<T>(IEnumerable<T> entities, WorksheetOptions? options = null) where T : class
     {
-        ArgumentNullException.ThrowIfNull(entities);
-
         var excelType = ExcelTypeRegistry.Get<T>();
-
-        var metadataMap = GetOrAddMetadataMap(excelType);
-
-        foreach (var entity in entities)
-            WriteRow(excelType, metadataMap, entity, options);
+        Write(excelType, options, entities.ToArray());
     }
 
     public void Save() => _workbook.Save();
@@ -126,120 +119,35 @@ public sealed class ExcelWorkbook : IDisposable
 
     public void SaveAs(Stream stream) => _workbook.SaveAs(stream);
 
-    private (IXLWorksheet Worksheet, WorksheetMetadata Metadata)? GetMetadataMap(
-        ExcelType excelType, bool isNewWorksheet = false)
+    private void Write<T>(ExcelType excelType, WorksheetOptions? options = null, params T[] entities) where T : class
     {
-        if (_metadataMap.TryGetValue(excelType, out var value))
-            return value;
+        var metadata = _worksheetMetadataMap.GetOrAdd(excelType);
 
-        var worksheet = _workbook.Worksheet(excelType);
-        if (worksheet == null)
-            return null;
+        if (!metadata.Validate())
+            throw new Exception("Worksheet is not valid");
 
-        var metadata = new WorksheetMetadata(worksheet, excelType, isNewWorksheet);
-        var metadataMap = (worksheet, metadata);
-        _metadataMap[excelType] = metadataMap;
-
-        return metadataMap;
-    }
-
-    private (IXLWorksheet Worksheet, WorksheetMetadata Metadata) GetOrAddMetadataMap(ExcelType excelType)
-    {
-        var metadataMap = GetMetadataMap(excelType);
-
-        if (metadataMap != null)
-            return metadataMap.Value;
-
-        var newOrExistingWorksheet =
-            _workbook.GetOrAddWorksheet(excelType)
-            ?? throw new InvalidOperationException("There is another worksheet in the same same position.");
-
-        CreateTemplate(newOrExistingWorksheet.Worksheet, excelType);
-
-        // Create metadata after writing template
-        // So metadata can analyze the headers on initialization
-        return GetMetadataMap(excelType, newOrExistingWorksheet.IsNewWorksheet)
-               ?? throw new InvalidOperationException("Metadata is not found");
-    }
-
-    private static void CreateTemplate(IXLWorksheet worksheet, ExcelType excelType)
-    {
-        // Check if the worksheet is empty. If it is, set the worksheet name and write headers.
-        // For new sheets, headers need to be written to ensure accurate data retrieval later,
-        // as column positions might be changed by users. For existing sheets, headers should
-        // not be overwritten to preserve user-defined column orders.
-        if (!worksheet.IsEmpty())
-            return;
-
-        worksheet.Name = excelType.WorksheetName;
-
-        CreateHeaders(worksheet, excelType);
-    }
-
-    private static void CreateHeaders(IXLWorksheet worksheet, ExcelType excelType)
-    {
-        foreach (var caption in excelType.WorksheetCaptions)
-        {
-            var firstCellAddress = caption.AddressRange.FirstCellAddress;
-            var lastCellAddress = caption.AddressRange.LastCellAddress;
-
-            var captionRange = worksheet.Range(
-                firstCellAddress.RowNumber, firstCellAddress.ColumnNumber,
-                lastCellAddress.RowNumber, lastCellAddress.ColumnNumber);
-
-            captionRange.Merge();
-            captionRange.SetValue(caption.Name);
-            caption.Style?.Invoke(captionRange.Style);
-        }
-
-        // If column header row count is 0, skip writing column headers
-        if (!excelType.HasColumnHeaders())
-            return;
-
-        var columnHeaderRowStart = excelType.FirstColumnHeaderRow()!.Value;
-        var columnHeaderRowEnd = excelType.LastColumnHeaderRow()!.Value;
-
-        foreach (var property in excelType.Properties)
-        {
-            var propHeaderRange = worksheet.Range(
-                columnHeaderRowStart, property.ColumnNumber,
-                columnHeaderRowEnd, property.ColumnNumber);
-
-            propHeaderRange.Merge();
-            propHeaderRange.Value = property.HeaderName;
-            property.HeaderStyle?.Invoke(propHeaderRange.Style);
-        }
-
-        // Has no auto filter, skip
-        if (!excelType.ColumnHeaderAutoFilter)
-            return;
-
-        var columnHeaderColumnStart = excelType.FirstColumnHeaderColumn()!.Value;
-        var columnHeaderColumnEnd = excelType.LastColumnHeaderColumn()!.Value;
-
-        var headerRange = worksheet.Range(
-            columnHeaderRowStart, columnHeaderColumnStart,
-            columnHeaderRowEnd, columnHeaderColumnEnd);
-
-        headerRange.SetAutoFilter();
+        foreach (var entity in entities)
+            WriteRow(excelType, metadata, entity, options);
     }
 
     private static void WriteRow<T>(
         ExcelType excelType,
-        (IXLWorksheet Worksheet, WorksheetMetadata Metadata) metadataMap,
+        WorksheetMetadata metadata,
         T entity,
         WorksheetOptions? options)
         where T : class
     {
-        var nextEmptyRow = metadataMap.Worksheet.NextEmptyRow();
+        ArgumentNullException.ThrowIfNull(entity);
+
+        // Ensure template is written to the worksheet
+        WriteTemplate(metadata);
+
+        var nextEmptyRow = metadata.Worksheet.NextEmptyRow();
 
         var useOptions = options ?? WorksheetOptions.Default;
         foreach (var property in excelType.Properties)
         {
-            var cell = nextEmptyRow.Cell(metadataMap.Metadata, property)
-                       ?? throw new CellMismatchException(
-                           new CellAddress(nextEmptyRow.RowNumber(), property.ColumnNumber), property.HeaderName);
-
+            var cell = nextEmptyRow.Cell(metadata, property);
             var value = property.PropertyInfo.GetValue(entity);
 
             if (value != null)
@@ -265,5 +173,72 @@ public sealed class ExcelWorkbook : IDisposable
 
             property.CellStyle?.Invoke(entity, property.PropertyInfo, value, new CellComment(cell), cell.Style);
         }
+    }
+
+    private static void WriteTemplate(WorksheetMetadata metadata)
+    {
+        // Do not override if worksheet is not empty
+        if (!metadata.Worksheet.IsEmpty())
+            return;
+
+        foreach (var caption in metadata.ExcelType.Captions)
+        {
+            var range = metadata.Worksheet.Range(caption.AddressRange);
+
+            range.Merge();
+            range.SetValue(caption.Name);
+            caption.Style?.Invoke(range.Style);
+        }
+
+        if (!metadata.ExcelType.HasHeaders())
+        {
+            metadata.Update();
+            return;
+        }
+
+        // All headers are in same row
+        // But we need to calculate used column range for headers
+        var headersExpectedAt = metadata.ExpectedHeaders[0].ExpectedAt!.Value;
+        var firstHeaderRowNumber = headersExpectedAt.FirstCellAddress.RowNumber;
+        var firstHeaderColumnNumber = headersExpectedAt.FirstCellAddress.ColumnNumber;
+        var lastHeaderRowNumber = headersExpectedAt.LastCellAddress.RowNumber;
+        var lastHeaderColumnNumber = headersExpectedAt.LastCellAddress.ColumnNumber;
+
+        foreach (var property in metadata.ExcelType.Properties)
+        {
+            var range = metadata.Worksheet.Range(
+                firstHeaderRowNumber,
+                property.ColumnNumber,
+                lastHeaderRowNumber,
+                property.ColumnNumber);
+
+            range.Merge();
+            range.Value = property.HeaderName;
+            property.HeaderStyle?.Invoke(range.Style);
+
+            // Find used column range for headers
+            if (property.ColumnNumber < firstHeaderColumnNumber)
+                firstHeaderColumnNumber = property.ColumnNumber;
+
+            if (property.ColumnNumber > lastHeaderColumnNumber)
+                lastHeaderColumnNumber = property.ColumnNumber;
+        }
+
+        // Has no auto filter, skip
+        if (!metadata.ExcelType.HeaderAutoFilter)
+        {
+            metadata.Update();
+            return;
+        }
+
+        var headerRange = metadata.Worksheet.Range(
+            firstHeaderRowNumber,
+            firstHeaderColumnNumber,
+            lastHeaderRowNumber,
+            lastHeaderColumnNumber);
+
+        headerRange.SetAutoFilter();
+
+        metadata.Update();
     }
 }

@@ -6,23 +6,11 @@ namespace MapExcel.Extensions;
 internal static class XLRowExtensions
 {
     /// <summary>
-    ///     Returns the cell in the given row that matches the given excelProperty
-    ///     and the excelProperty match strategy.
+    ///     Returns the cell at the given row that matches the given ExcelProperty.
     /// </summary>
-    internal static IXLCell? Cell(this IXLRow row, WorksheetMetadata metadata, ExcelProperty excelProperty) =>
-        excelProperty.ColumnMatch switch
-        {
-            ColumnMatch.ByColumn => row.Cell(excelProperty.ColumnNumber),
-            ColumnMatch.ByHeader =>
-                metadata.FoundHeaders.TryGetValue(excelProperty.HeaderName, out var headerMetadata)
-                    ? row.Cell(headerMetadata.FoundAt!.Value.ColumnNumber)
-                    : null,
-            ColumnMatch.ByColumnAndHeader =>
-                metadata.FoundHeaders.TryGetValue(excelProperty.HeaderName, out var headerMetadata)
-                    ? headerMetadata.FoundAt!.Value.ColumnNumber == excelProperty.ColumnNumber
-                        ? row.Cell(excelProperty.ColumnNumber)
-                        : null
-                    : null,
-            _ => throw new ArgumentOutOfRangeException(nameof(excelProperty))
-        };
+    internal static IXLCell Cell(this IXLRow row, WorksheetMetadata metadata, ExcelProperty excelProperty) =>
+        // If headers not enabled use the column number directly
+        metadata.PropertyHeaderMap.TryGetValue(excelProperty, out var headerMetadata)
+            ? row.Cell(headerMetadata!.FoundAt!.Value.FirstCellAddress.ColumnNumber)
+            : row.Cell(excelProperty.ColumnNumber);
 }

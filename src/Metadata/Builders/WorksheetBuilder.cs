@@ -37,15 +37,15 @@ public sealed class WorksheetBuilder
         return this;
     }
 
-    public WorksheetBuilder AddCaption(Action<WorksheetCaptionBuilder> configure)
+    public WorksheetBuilder AddCaption(Action<CaptionBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
 
-        var caption = new WorksheetCaption();
-        var builder = new WorksheetCaptionBuilder(caption);
+        var caption = new Caption();
+        var builder = new CaptionBuilder(caption);
         configure(builder);
 
-        _excelType.WorksheetCaptions.Add(caption);
+        _excelType.Captions.Add(caption);
         return this;
     }
 }

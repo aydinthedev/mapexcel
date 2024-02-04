@@ -14,7 +14,4 @@ internal static class ExcelTypeInitializer
 
         return excelType;
     }
-
-    // TODO: Annotation support
-    internal static ExcelType InitializeWithAnnotations() => throw new NotImplementedException();
 }

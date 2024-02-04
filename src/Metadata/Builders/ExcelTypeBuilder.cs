@@ -20,18 +20,18 @@ public sealed class ExcelTypeBuilder<T> where T : class, new()
         return this;
     }
 
-    public ExcelTypeBuilder<T> Headers(int rowCount)
+    public ExcelTypeBuilder<T> HeaderRows(int rowCount)
     {
         if (rowCount < 1)
             throw new ArgumentOutOfRangeException(nameof(rowCount));
 
-        _excelType.ColumnHeaderCount = rowCount;
+        _excelType.HeaderRows = rowCount;
         return this;
     }
 
     public ExcelTypeBuilder<T> AutoFilter()
     {
-        _excelType.ColumnHeaderAutoFilter = true;
+        _excelType.HeaderAutoFilter = true;
         return this;
     }
 

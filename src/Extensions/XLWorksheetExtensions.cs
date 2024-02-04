@@ -6,6 +6,15 @@ namespace MapExcel.Extensions;
 internal static class XLWorksheetExtensions
 {
     /// <summary>
+    ///     Returns IXLRange from given CellAddressRange
+    /// </summary>
+    internal static IXLRange Range(this IXLWorksheet worksheet, CellAddressRange range) =>
+        worksheet.Range(range.FirstCellAddress.RowNumber,
+            range.FirstCellAddress.ColumnNumber,
+            range.LastCellAddress.RowNumber,
+            range.LastCellAddress.ColumnNumber);
+
+    /// <summary>
     ///     Returns the row below the last non-null row
     /// </summary>
     internal static IXLRow NextEmptyRow(this IXLWorksheet worksheet)
@@ -21,62 +30,30 @@ internal static class XLWorksheetExtensions
     }
 
     /// <summary>
-    ///     Returns the starting index of the first found worksheet caption row.
+    ///     Returns the first row that contains data:
+    ///     - If worksheet is empty, returns null
+    ///     - If the worksheet has headers, returns the row below the found header row.
+    ///     - If the worksheet has no headers but has captions, returns the row below the found caption row.
     /// </summary>
-    internal static int? FirstWorksheetCaptionRow(this IXLWorksheet worksheet, ExcelType excelType) =>
-        worksheet.IsEmpty() || !excelType.HasWorksheetCaptions()
-            ? null
-            : worksheet.FirstRowUsed().RowNumber();
-
-    /// <summary>
-    ///     Returns the starting index of the last found worksheet caption row.
-    /// </summary>
-    internal static int? LastWorksheetCaptionRow(this IXLWorksheet worksheet, ExcelType excelType)
+    internal static IXLRow? FirstDataRowFound(this IXLWorksheet worksheet, WorksheetMetadata metadata)
     {
-        var firstWorksheetCaptionRow = worksheet.FirstWorksheetCaptionRow(excelType);
-        if (firstWorksheetCaptionRow == null)
-            return null;
+        if (worksheet.IsEmpty()) return null;
 
-        return firstWorksheetCaptionRow + excelType.WorksheetCaptionRange() - 1;
-    }
+        // Headers always below captions so if headers are expected, we can skip captions
+        if (metadata.ExcelType.HasHeaders())
+        {
+            var foundExpectedHeader = metadata.ExpectedHeaders.FirstOrDefault(x => x.FoundAt != null);
+            return foundExpectedHeader != null
+                ? worksheet.Row(foundExpectedHeader.FoundAt!.Value.LastCellAddress.RowNumber).RowBelow()
+                : null;
+        }
 
-    /// <summary>
-    ///     Returns the starting index of the first found column header row.
-    /// </summary>
-    internal static int? FirstColumnHeaderRow(this IXLWorksheet worksheet, ExcelType excelType)
-    {
-        if (worksheet.IsEmpty() || !excelType.HasColumnHeaders())
-            return null;
+        // No headers, no captions so we should use first row
+        if (!metadata.ExcelType.HasCaptions()) return worksheet.FirstRowUsed();
 
-        var lastWorksheetCaptionRow = worksheet.LastWorksheetCaptionRow(excelType);
-        return lastWorksheetCaptionRow != null
-            ? lastWorksheetCaptionRow + 1
-            : worksheet.FirstRowUsed().RowNumber();
-    }
-
-    /// <summary>
-    ///     Returns the starting index of the last found column header row.
-    /// </summary>
-    internal static int? LastColumnHeaderRow(this IXLWorksheet worksheet, ExcelType excelType)
-    {
-        var firstColumnHeaderRow = worksheet.FirstColumnHeaderRow(excelType);
-        if (firstColumnHeaderRow == null)
-            return null;
-
-        return firstColumnHeaderRow + excelType.ColumnHeaderRange() - 1;
-    }
-
-    /// <summary>
-    ///     Returns the starting index of the first found data row.
-    /// </summary>
-    internal static int? FirstDataRow(this IXLWorksheet worksheet, ExcelType excelType)
-    {
-        if (worksheet.IsEmpty())
-            return null;
-
-        var lastColumnHeaderRow = worksheet.LastColumnHeaderRow(excelType);
-        return lastColumnHeaderRow != null
-            ? lastColumnHeaderRow + 1
-            : worksheet.FirstRowUsed().RowNumber();
+        var foundExpectedCaption = metadata.ExpectedCaptions.FirstOrDefault(x => x.FoundAt != null);
+        return foundExpectedCaption != null
+            ? worksheet.Row(foundExpectedCaption.FoundAt!.Value.LastCellAddress.RowNumber).RowBelow()
+            : null;
     }
 }

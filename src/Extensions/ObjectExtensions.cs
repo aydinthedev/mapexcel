@@ -14,9 +14,9 @@ internal static class ObjectExtensions
             return Blank.Value;
 
         if (!property.IsCollectionType)
-            // Datetime values are dependent on the timezone, should be converted to the timezone of the worksheet
             return Type.GetTypeCode(property.UnderlyingType) switch
             {
+                // Datetime values are dependent on the timezone, should be converted to the timezone of the worksheet
                 TypeCode.DateTime => ((DateTime)obj).AdjustToTimeZone(options.TimeZone),
                 _ => XLCellValue.FromObject(obj)
             };

@@ -6,7 +6,7 @@ namespace MapExcel.Extensions;
 internal static class XLWorkbookExtensions
 {
     /// <summary>
-    ///     Returns the worksheet that matches with the worksheet strategy
+    ///     Returns the matching worksheet based on the match strategy.
     /// </summary>
     internal static IXLWorksheet? Worksheet(this IXLWorkbook workbook, ExcelType excelType) =>
         excelType.WorksheetMatch switch
@@ -41,17 +41,16 @@ internal static class XLWorkbookExtensions
         };
 
     /// <summary>
-    ///     Returns the worksheet that matches with the worksheet strategy to update
-    ///     or if not found creates a new one.
+    ///     Returns the matching worksheet based on the match strategy, or creates a new one if not found.
     /// </summary>
-    internal static (bool IsNewWorksheet, IXLWorksheet Worksheet)? GetOrAddWorksheet(
+    internal static (IXLWorksheet Worksheet, bool IsNew)? GetOrAddWorksheet(
         this IXLWorkbook workbook, ExcelType excelType)
     {
         // When there is a sheet that matches the worksheet strategy, return it
         // If we can read we should be able to write
         var readableSheet = workbook.Worksheet(excelType);
         if (readableSheet != null)
-            return (false, readableSheet);
+            return (readableSheet, false);
 
         // We fall here if there is no exact number or name match
         // If we have missing sheets then those are the reason we can't find a match
@@ -64,7 +63,9 @@ internal static class XLWorkbookExtensions
                 workbook.AddWorksheet();
 
             var lastSheet = workbook.AddWorksheet();
-            return (true, lastSheet);
+            lastSheet.Name = excelType.WorksheetName;
+
+            return (lastSheet, true);
         }
 
         // Here we know we have enough sheets, but we couldn't find a match
@@ -73,7 +74,11 @@ internal static class XLWorkbookExtensions
         // If the sheet at the specified number is empty, we can use it
         var sameIndexSheet = workbook.Worksheet(excelType.WorksheetNumber);
         if (sameIndexSheet.IsEmpty())
-            return (false, sameIndexSheet);
+        {
+            sameIndexSheet.Name = excelType.WorksheetName;
+
+            return (sameIndexSheet, false);
+        }
 
         // Since the sheet at the specified number is not empty and does not match the name
         // we can't be sure it belongs to this type, so we can't use it
@@ -84,7 +89,8 @@ internal static class XLWorkbookExtensions
             return null;
 
         var createdSheet = workbook.AddWorksheet();
+        createdSheet.Name = excelType.WorksheetName;
 
-        return (true, createdSheet);
+        return (createdSheet, true);
     }
 }

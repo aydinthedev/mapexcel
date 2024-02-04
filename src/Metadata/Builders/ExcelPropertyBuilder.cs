@@ -35,18 +35,11 @@ public sealed class ExcelPropertyBuilder<T, TP> where T : class
         _excelProperty.ColumnNumber = columnNumber;
         return this;
     }
-
-    public ExcelPropertyBuilder<T, TP> Match(ColumnMatch match)
-    {
-        ArgumentNullException.ThrowIfNull(match);
-        _excelProperty.ColumnMatch = match;
-        return this;
-    }
-
-    public ExcelPropertyBuilder<T, TP> Header(Action<ColumnHeaderBuilder> configure)
+    
+    public ExcelPropertyBuilder<T, TP> Header(Action<HeaderBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
-        configure(new ColumnHeaderBuilder(_excelProperty));
+        configure(new HeaderBuilder(_excelProperty));
         return this;
     }
 

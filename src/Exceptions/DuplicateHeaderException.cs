@@ -14,16 +14,24 @@ public class DuplicateHeaderException : Exception
     {
     }
 
-    public DuplicateHeaderException(IXLWorksheet worksheet, CellAddress address1, CellAddress address2, string header)
+    public DuplicateHeaderException(
+        IXLWorksheet worksheet,
+        CellAddress address,
+        CellAddress duplicateAddress,
+        string header)
         : base(
-            $"Duplicate header '{header}' found in '{worksheet.Name}' at '{address1}' and '{address2}'.")
+            $"Duplicate header '{header}' found in '{worksheet.Name}' at '{address}' and '{duplicateAddress}'.")
     {
     }
 
     public DuplicateHeaderException(
-        IXLWorksheet worksheet, CellAddress address1, CellAddress address2, string header, Exception innerException)
+        IXLWorksheet worksheet,
+        CellAddress address,
+        CellAddress duplicateAddress,
+        string header,
+        Exception innerException)
         : base(
-            $"Duplicate header '{header}' found in '{worksheet.Name}' at '{address1}' and '{address2}'.",
+            $"Duplicate header '{header}' found in '{worksheet.Name}' at '{address}' and '{duplicateAddress}'.",
             innerException)
     {
     }

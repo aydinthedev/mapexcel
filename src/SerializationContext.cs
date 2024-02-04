@@ -36,8 +36,8 @@ public class DeserializationContext
     public IXLStyle CellStyle { get; }
 
     /// <summary>
-    /// Set this property if deserialization failed.
-    /// This will used to invalidate the whole row.
+    ///     Set this property if deserialization failed.
+    ///     This will used to invalidate the whole row.
     /// </summary>
     public bool IsValid { get; set; }
 }

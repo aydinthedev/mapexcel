@@ -13,8 +13,8 @@ internal sealed class ExcelType
         WorksheetNumber = WorksheetConstants.MinNumber;
         WorksheetName = WorksheetConstants.DefaultName;
         WorksheetMatch = WorksheetMatch.Default;
-        WorksheetCaptions = new List<WorksheetCaption>();
-        ColumnHeaderCount = 0;
+        Captions = new List<Caption>();
+        HeaderRows = 0;
     }
 
     internal Type Type { get; }
@@ -27,9 +27,9 @@ internal sealed class ExcelType
 
     internal WorksheetMatch WorksheetMatch { get; set; }
 
-    internal List<WorksheetCaption> WorksheetCaptions { get; }
+    internal List<Caption> Captions { get; }
 
-    internal int ColumnHeaderCount { get; set; }
+    internal int HeaderRows { get; set; }
 
-    internal bool ColumnHeaderAutoFilter { get; set; }
+    internal bool HeaderAutoFilter { get; set; }
 }
